@@ -1,5 +1,6 @@
 #include "daisy_patch.h"
 #include "daisysp.h"
+#include "./src/EnergyOsc.hpp"
 
 using namespace daisy;
 using namespace daisysp;
