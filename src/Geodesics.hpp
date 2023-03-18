@@ -11,8 +11,8 @@
 
 #pragma once
 
-#include "rack.hpp"
-#include "GeoWidgets.hpp"
+//#include "rack.hpp"
+//#include "GeoWidgets.hpp"
 
 
 using namespace rack;
@@ -256,7 +256,7 @@ struct RefreshCounter {
 };
 
 
-struct Trigger : dsp::SchmittTrigger {
+struct SchmittTrigger : dsp::SchmittTrigger {
 	// implements a 0.1V - 1.0V SchmittTrigger (include/dsp/digital.hpp) instead of 
 	//   calling SchmittTriggerInstance.process(math::rescale(in, 0.1f, 1.f, 0.f, 1.f))
 	bool process(float in) {

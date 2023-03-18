@@ -71,10 +71,10 @@ struct Energy : Module {
 	
 	// No need to save, no reset
 	RefreshCounter refresh;
-	Trigger routingTrigger;
-	Trigger planckTriggers[2];
-	Trigger modtypeTriggers[2];
-	Trigger crossTrigger;
+	SchmittTrigger routingTrigger;
+	SchmittTrigger planckTriggers[2];
+	SchmittTrigger modtypeTriggers[2];
+	SchmittTrigger crossTrigger;
 	SlewLimiter multiplySlewers[N_POLY];
 	
 	
