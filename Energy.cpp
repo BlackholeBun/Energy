@@ -2,12 +2,14 @@
 #include "daisysp.h"
 #include "./src/EnergyOsc.hpp"
 #include "./Energy.hpp"
+#include "./src/AudioRateParam.hpp"
 
 using namespace daisy;
 using namespace daisysp;
 
 DaisyPatch hw;
 Parameter Mass, SpeedOfLight, M_Osc, C_Osc;
+AudioRateParam VpO, Multiply;
 
 
 // Constants
@@ -53,8 +55,8 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
 		out[2][i] = in[2][i];
 		out[3][i] = in[3][i];
 		*/
-
-		out[0][i] = process(in[0][i], in[1][i]);
+		
+		out[0][i] = process(Multiply.Process(in[Multiply.Index()][i]), VpO.Process(in[VpO.Index()][i]));
 	}
 }
 
@@ -66,13 +68,14 @@ int main(void)
 	SpeedOfLight.Init(hw.controls[hw.CTRL_2], 10.0, 110.0f, Parameter::LINEAR);
 	M_Osc.Init(hw.controls[hw.CTRL_3], 10.0, 110.0f, Parameter::LINEAR);
 	C_Osc.Init(hw.controls[hw.CTRL_4], 10.0, 110.0f, Parameter::LINEAR);
+	VpO.Init(0, 10.0, 110.0f, AudioRateParam::LINEAR);
+	Multiply.Init(0, 10.0, 110.0f, AudioRateParam::LINEAR);
+
 	hw.SetAudioBlockSize(4); // number of samples handled per callback
 	hw.SetAudioSampleRate(SaiHandle::Config::SampleRate::SAI_48KHZ);
 	hw.StartAdc();
 	hw.StartAudio(AudioCallback);
 
-	freqctrl.Init(
-        patch.controls[patch.CTRL_1], 10.0, 110.0f, Parameter::LINEAR);
 	while(1) {
 		hw.DisplayControls(false);
 	}
