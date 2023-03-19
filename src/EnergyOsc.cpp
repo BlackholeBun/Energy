@@ -15,27 +15,20 @@
 //-----------------------------------------------------------------------------
 
 void SlewLimiter::setParams(float sampleRate, float milliseconds, float range) {
-	assert(sampleRate > 0.0f);
-	assert(milliseconds >= 0.0f);
-	assert(range > 0.0f);
 	_deltaUp = range / ((milliseconds / 1000.0f) * sampleRate);
 	_deltaDown = _deltaUp;
 }
 
 void SlewLimiter::setParams2(float sampleRate, float millisecondsUp, float millisecondsDown, float range) {
-	assert(sampleRate > 0.0f);
-	assert(millisecondsUp >= 0.0f);
-	assert(millisecondsDown >= 0.0f);
-	assert(range > 0.0f);
 	_deltaUp = range / ((millisecondsUp / 1000.0f) * sampleRate);
 	_deltaDown = range / ((millisecondsDown / 1000.0f) * sampleRate);
 }
 
 float SlewLimiter::next(float sample, float last) {
 	if (sample > last) {
-		return std::min(last + _deltaUp, sample);
+		return std::fmin(last + _deltaUp, sample);
 	}
-	return std::max(last - _deltaDown, sample);
+	return std::fmax(last - _deltaDown, sample);
 }
 
 
@@ -69,7 +62,6 @@ void SineTable::_generate() {
 //-----------------------------------------------------------------------------
 
 CICDecimator::CICDecimator(int stages, int factor) {
-	assert(stages > 0);
 	_stages = stages;
 	_integrators = new T[_stages + 1] {};
 	_combs = new T[_stages] {};
@@ -82,7 +74,6 @@ CICDecimator::~CICDecimator() {
 }
 
 void CICDecimator::setParams(float _sampleRate, int factor) {
-	assert(factor > 0);
 	if (_factor != factor) {
 		_factor = factor;
 		_gainCorrection = 1.0f / (float)(pow(_factor, _stages));
@@ -195,6 +186,7 @@ void FMOp::onReset() {
 	_phasor.resetPhase();
 }
 
+/*
 void FMOp::dataToJson(json_t *rootJ, std::string id) {
 	json_object_set_new(rootJ, (id + "phase").c_str(), json_integer(_phasor.getPhase()));
 }
@@ -204,7 +196,7 @@ void FMOp::dataFromJson(json_t *rootJ, std::string id) {
 	if (phaseJ)
 		_phasor.setPhase((Phasor::phase_t)json_integer_value(phaseJ));
 }
-
+*/
 void FMOp::onSampleRateChange(float newSampleRate) {
 	_steps = modulationSteps;
 	float sampleRate = newSampleRate;

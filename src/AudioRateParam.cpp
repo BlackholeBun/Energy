@@ -1,7 +1,6 @@
 #include "AudioRateParam.hpp"
 #include <math.h>
 
-
 void AudioRateParam::Init(int index, float min, float max, Curve curve)
 {
     pmin_   = min;
@@ -10,9 +9,10 @@ void AudioRateParam::Init(int index, float min, float max, Curve curve)
     index_     = index;
     lmin_   = logf(min < 0.0000001f ? 0.0000001f : min);
     lmax_   = logf(max);
+    out_    = 0.0f;
 }
 
-float AudioRateParam::Process(float input)
+float AudioRateParam::Update(float input)
 {
     switch(pcurve_)
     {
@@ -30,5 +30,10 @@ float AudioRateParam::Process(float input)
             break;
         default: break;
     }
-    return val_;
+    return out_ = val_;
+}
+
+float AudioRateParam::Process()
+{
+    return out_;
 }

@@ -92,7 +92,7 @@ struct Energy : Module {
 		configParam(MODTYPE_PARAMS + 0, 0.0f, 1.0f, 0.0f, "CV mod type M");
 		configParam(MODTYPE_PARAMS + 1, 0.0f, 1.0f, 0.0f, "CV mod type C");		
 		
-		configInput(FREQCV_INPUTS + 0, "Mass");
+		configInput(FREQCV_INPUTS + 0, "Mass_Knob");
 		configInput(FREQCV_INPUTS + 1, "Speed of light");
 		configInput(FREQCV_INPUT, "1V/oct");
 		configInput(MULTIPLY_INPUT, "Multiply");

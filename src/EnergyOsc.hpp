@@ -11,6 +11,7 @@
 #pragma once
 
 //#include "Geodesics.hpp"
+#include "../Energy.hpp"
 
 
 //-----------------------------------------------------------------------------
@@ -48,8 +49,6 @@ protected:
 
 public:
 	Table(int n = 10) {
-		assert(n > 0);
-		assert(n <= 16);
 		_length = 1 << n;
 	}
 	virtual ~Table() {
@@ -61,8 +60,6 @@ public:
 	inline int length() const { return _length; }
 
 	inline float value(int i) const {
-		assert(i >= 0 && i < _length);
-		assert(_table);
 		return _table[i];
 	}
 
@@ -239,7 +236,7 @@ struct Phasor : OscillatorGenerator {
 	inline float nextForPhase(phase_t phase) { return _nextForPhase(phase); }
 	virtual void _update();
 	inline void advancePhase() { _phase += _delta; }
-	inline void advancePhase(int n) { assert(n > 0); _phase += n * _delta; }
+	inline void advancePhase(int n) { _phase += n * _delta; }
 	float _next() override final;
 	virtual float _nextForPhase(phase_t phase);
 

@@ -1,8 +1,9 @@
+#pragma once
 
-
-struct SchmittTrigger : dsp::SchmittTrigger {
+struct SchmittTrigger {
 	// implements a 0.1V - 1.0V SchmittTrigger (include/dsp/digital.hpp) instead of 
 	//   calling SchmittTriggerInstance.process(math::rescale(in, 0.1f, 1.f, 0.f, 1.f))
+	bool state = false;
 	bool process(float in) {
 		if (state) {
 			// HIGH to LOW
@@ -19,8 +20,26 @@ struct SchmittTrigger : dsp::SchmittTrigger {
 		}
 		return false;
 	}	
-};	
+};
 
+float process(float, float);
+void UpdateOled();
+void writeQuantToDisplay(int mode);
+void writeModToDisplay(int mode);
+void writeRoutingToDisplay(int mode);
+void writeFreqToDisplay(int mode);
+void writeMomentumToDisplay(int mode);
+void writeCrossToDisplay(int mode);
+void writeEnergyToDisplay(int mode);
+void writeFreqToDisplay(int mode);
+float calcFreqKnob(int osci);
+void calcModSignals(int chan);
+void calcFeedbacks(int chan);
+
+inline float clamp(float x, float min, float max) {
+	return x < min ? min : (x > max ? max : x);
+};
+/*
 struct Energy : Module {
 	enum ParamIds {
 		ENUMS(PLANCK_PARAMS, 2),// push buttons
@@ -53,3 +72,4 @@ struct Energy : Module {
 		NUM_LIGHTS
 	};
 };
+*/

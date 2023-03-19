@@ -2,7 +2,10 @@
 TARGET = Energy
 
 # Sources
-CPP_SOURCES = Energy.cpp
+CPP_SOURCES += \
+Energy.cpp	\
+src/AudioRateParam.cpp	\
+src/EnergyOsc.cpp
 
 # Library Locations
 LIBDAISY_DIR = ../DaisyExamples/libDaisy/

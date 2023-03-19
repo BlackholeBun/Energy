@@ -26,9 +26,12 @@ class AudioRateParam
     /** processes the input signal, this should be called at the samplerate of the hid_ctrl passed in.
     \return  a float with the specified transformation applied.
     */
-    float Process(float input);
+    float Update(float input);
 
-    inline int Index() {return index_};
+    //Output the current value with the processe method to maintanin compatibility with Daisy Params.
+    float Process();
+
+    inline int Index() {return index_;};
 
     /** 
     \return the current value from the parameter without processing another sample.
@@ -44,4 +47,5 @@ class AudioRateParam
     float         lmin_, lmax_; // for log range
     float         val_;
     Curve         pcurve_;
+    float         out_;
 };
