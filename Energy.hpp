@@ -26,19 +26,28 @@ float process(float, float);
 void UpdateOled();
 void writeQuantToDisplay(int mode);
 void writeModToDisplay(int mode);
-void writeRoutingToDisplay(int mode);
-void writeFreqToDisplay(int mode);
-void writeMomentumToDisplay(int mode);
-void writeCrossToDisplay(int mode);
-void writeEnergyToDisplay(int mode);
-void writeFreqToDisplay(int mode);
 float calcFreqKnob(int osci);
 void calcModSignals(int chan);
 void calcFeedbacks(int chan);
+void ParamUpdate(float value, int id);
 
 inline float clamp(float x, float min, float max) {
 	return x < min ? min : (x > max ? max : x);
 };
+
+enum ParamIds {
+	VpO,
+	Multiply,
+	oscFreqCV1,
+	oscFreqCV2,
+	momentumCV1,
+	momentumCV2,
+	oscFreqKnobs1,
+	oscFreqKnobs2,
+	momentumKnob1,
+	momentumKnob2,
+};
+
 /*
 struct Energy : Module {
 	enum ParamIds {

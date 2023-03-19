@@ -2,16 +2,14 @@
 #include "daisysp.h"
 #include "./src/EnergyOsc.hpp"
 #include "./Energy.hpp"
-#include "./src/AudioRateParam.hpp"
 #include <stdlib.h>
 
 using namespace daisy;
 using namespace daisysp;
 
 DaisyPatch hw;
-Parameter Mass_Knob, SpeedOfLight_Knob, M_Osc, C_Osc;
-AudioRateParam VpO, Multiply, Mass, SpeedOfLight;
-
+Parameter CTRL_1, CTRL_2, CTRL_3, CTRL_4;
+Parameter * Params[4] = {&CTRL_1, &CTRL_2, &CTRL_3, &CTRL_4};
 
 // Constants
 static const int N_POLY = 16;
@@ -29,10 +27,12 @@ int routing;// routing of knob 1.
 int plancks[2];// index is left/right, value is: 0 = not quantized, 1 = semitones, 2 = 5th+octs, 3 = adds -10V offset
 int modtypes[2];// index is left/right, value is: {0 to 3} = {bypass, add, amp}
 int cross;// cross momentum active or not
-Parameter * oscFreqKnobs[2];
-AudioRateParam * oscFreqCV[2];
-Parameter * momentumKnob[2];
-Parameter * momentumCV[2];
+ParamIds paramMap[4];// map of param indexes to control indexes
+float oscFreqKnobs[2];
+float oscFreqCV[2];
+float momentumKnob[2];
+float momentumCV[2];
+float vpO, multiply;
 
 // No need to save, with reset
 int numChan = 1;
@@ -51,11 +51,12 @@ SlewLimiter multiplySlewers[N_POLY];
 
 void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, size_t size)
 {
+	/*
 	static float massVal;
 	static float speedOfLightVal;
 	static float multiplyVal;
 	static float vpOVal;
-
+	*/
 	hw.ProcessAllControls();
 	for (size_t i = 0; i < size; i++)
 	{
@@ -64,15 +65,19 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
 		out[1][i] = in[1][i];
 		out[2][i] = in[2][i];
 		out[3][i] = in[3][i];
-		*/
+
 		massVal = Mass.Update(in[Mass.Index()][i]); // Todo use Mass value
 		speedOfLightVal = SpeedOfLight.Update(in[SpeedOfLight.Index()][i]); // Todo use SpeedOfLight value
 		multiplyVal = Multiply.Update(in[Multiply.Index()][i]); 
 		vpOVal = VpO.Update(in[VpO.Index()][i]);
+		*/
 
+		for (int j = 0; j < 4; j++) {
+			ParamUpdate(Params[j]->Process(), paramMap[j]);
+		}
 
 		//out[0][i] = process(multiplyVal,vpOVal);
-		out[0][i] = process(3.0f,oscFreqKnobs[0]->Process());
+		out[0][i] = process(multiply,vpO);
 		out[1][i] = out[0][i];
 		out[2][i] = out[0][i];
 		out[3][i] = out[0][i];
@@ -83,23 +88,30 @@ int main(void)
 {
 	hw.Init();
 
-	Mass_Knob.Init(hw.controls[hw.CTRL_1], -10.0f, 10.0f, Parameter::LINEAR);
-	SpeedOfLight_Knob.Init(hw.controls[hw.CTRL_2], -10.0f, 10.0f, Parameter::LINEAR);
-	M_Osc.Init(hw.controls[hw.CTRL_3], -10.0f, 10.0f, Parameter::LINEAR);
-	C_Osc.Init(hw.controls[hw.CTRL_4], -10.0f, 10.0f, Parameter::LINEAR);
-	VpO.Init(0, -3.0f, 7.0f, AudioRateParam::LINEAR);
-	Multiply.Init(1, -10.0f, 10.0f, AudioRateParam::LINEAR);
-	Mass.Init(2, -10.0f, 10.0f, AudioRateParam::LINEAR);
-	SpeedOfLight.Init(3, -10.0f, 10.0f, AudioRateParam::LINEAR);
+	CTRL_1.Init(hw.controls[hw.CTRL_1], -10.0f, 10.0f, Parameter::LINEAR);
+	CTRL_2.Init(hw.controls[hw.CTRL_2], -10.0f, 10.0f, Parameter::LINEAR);
+	CTRL_3.Init(hw.controls[hw.CTRL_3], -10.0f, 10.0f, Parameter::LINEAR);
+	CTRL_4.Init(hw.controls[hw.CTRL_4], -10.0f, 10.0f, Parameter::LINEAR);
+	// VpO.Init(0, -3.0f, 7.0f, AudioRateParam::LINEAR);
+	// Multiply.Init(1, -10.0f, 10.0f, AudioRateParam::LINEAR);
+	// Mass.Init(2, -10.0f, 10.0f, AudioRateParam::LINEAR);
+	// SpeedOfLight.Init(3, -10.0f, 10.0f, AudioRateParam::LINEAR);
 
-	oscFreqKnobs[0] = &Mass_Knob;
-	oscFreqKnobs[1] = &SpeedOfLight_Knob;
-	oscFreqCV[0] = &Mass;
-	oscFreqCV[1] = &SpeedOfLight;
-	momentumKnob[0] = &M_Osc;
-	momentumKnob[1] = &C_Osc;
-	momentumCV[0] = &M_Osc;
-	momentumCV[1] = &C_Osc;
+	oscFreqKnobs[0] = 0.0f;
+	oscFreqKnobs[1] = 0.0f;
+	oscFreqCV[0] = 0.0f;
+	oscFreqCV[1] = 0.0f;
+	momentumKnob[0] = 0.0f;
+	momentumKnob[1] = 0.0f;
+	momentumCV[0] = 0.0f;
+	momentumCV[1] = 0.0f;
+	vpO = 0.0f;
+	multiply = 3.0f;
+
+	paramMap[0] = VpO;
+	paramMap[1] = Multiply;
+	paramMap[2] = oscFreqCV1;
+	paramMap[3] = oscFreqCV2;
 
 	for (int c = 0; c < N_POLY; c++) {
 		oscM[c].construct(48000.0f);
@@ -119,6 +131,45 @@ int main(void)
 	}
 }
 
+void ParamUpdate(float value, int id){
+
+
+	switch (id)
+	{
+		case 0:
+			 vpO = value;
+			break;
+		case 1:
+			multiply = value;
+			break;
+		case 2:
+			oscFreqCV[0] = value;
+			break;
+		case 3:
+			oscFreqCV[1] = value;
+			break;
+		case 4:
+			momentumCV[0] = value;
+			break;
+		case 5:
+			momentumCV[1] = value;
+			break;
+		case 6:
+			oscFreqKnobs[0] = value;
+			break;
+		case 7:	
+			oscFreqKnobs[1] = value;
+			break;
+		case 8:
+			momentumKnob[0] = value;
+			break;
+		case 9:
+			momentumKnob[1] = value;
+			break;
+		default:
+			break;
+	}
+}
 /*  D
 |******************|
 |    M    |    C   |
@@ -267,14 +318,14 @@ float process(float Multiply, float VpO) {
 		*/
 		
 		// vocts
-		float vocts[2] = {modSignals[0][c] + VpO, modSignals[1][c] + VpO};
+		float vocts[2] = {modSignals[0][c] + vpO, modSignals[1][c] + vpO};
 		
 		// oscillators
 		float oscMout = oscM[c].step(vocts[0], feedbacks[0][c] * 0.3f);
 		float oscCout = oscC[c].step(vocts[1], feedbacks[1][c] * 0.3f);
 		
 		// multiply 
-		float slewInput = (clamp(Multiply / 10.0f, 0.0f, 1.0f));
+		float slewInput = (clamp(multiply / 10.0f, 0.0f, 1.0f));
 
 		float multiplySlewValue = multiplySlewers[c].next(slewInput) * 0.2f;
 		
@@ -332,13 +383,13 @@ float process(float Multiply, float VpO) {
 
 float calcFreqKnob(int osci) {
 	if (plancks[osci] == 0)// off (smooth)
-		return oscFreqKnobs[osci]->Process();
+		return oscFreqKnobs[osci];
 	if (plancks[osci] == 1)// semitones
-		return std::round(oscFreqKnobs[osci]->Process() * 12.0f) / 12.0f;
+		return std::round(oscFreqKnobs[osci] * 12.0f) / 12.0f;
 	if (plancks[osci] == 3)// -10V offset
-		return oscFreqKnobs[osci]->Process() - 10.0f;
+		return oscFreqKnobs[osci] - 10.0f;
 	// 5ths and octs (plancks[osci] == 2)
-	int retcv = (int)std::round((oscFreqKnobs[osci]->Process() + 3.0f) * 2.0f);
+	int retcv = (int)std::round((oscFreqKnobs[osci] + 3.0f) * 2.0f);
 	if ((retcv & 0x1) != 0)
 		return (float)(retcv)/2.0f - 3.0f + 0.08333333333f;
 	return (float)(retcv)/2.0f - 3.0f;
@@ -353,10 +404,10 @@ void calcModSignals(int chan) {
 		else {
 			//int chanIn = std::min(inputs[osci].getChannels() - 1, chan);
 			if (modtypes[osci] == 1) {// add
-				modSignals[osci][chan] = freqValue + oscFreqCV[osci]->Process();
+				modSignals[osci][chan] = freqValue + oscFreqCV[osci];
 			}
 			else {// amp
-				modSignals[osci][chan] = freqValue * (clamp(oscFreqCV[osci]->Process(), 0.0f, 10.0f) / 10.0f);
+				modSignals[osci][chan] = freqValue * (clamp(oscFreqCV[osci], 0.0f, 10.0f) / 10.0f);
 			}
 		}
 	}
@@ -374,9 +425,9 @@ void calcFeedbacks(int chan) {
 		moIn[osci] = 0.0f;
 		//if (inputs[MOMENTUM_INPUTS + osci].isConnected()) {
 			//int chanIn = std::min(inputs[MOMENTUM_INPUTS + osci].getChannels() - 1, chan);
-			moIn[osci] = momentumCV[osci]->Process();
+			moIn[osci] = momentumCV[osci];
 		//}
-		feedbacks[osci][chan] = momentumKnob[osci]->Process();
+		feedbacks[osci][chan] = momentumKnob[osci];
 	}
 	
 	if (cross == 0) {
