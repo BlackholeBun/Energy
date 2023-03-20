@@ -1,4 +1,14 @@
+#define PATCH
+//#define SUBMODULE
+
+#ifdef PATCH
 #include "daisy_patch.h"
+#endif
+
+#ifdef SUBMODULE
+#include "daisy_patch_sm.h"
+#endif
+
 #include "daisysp.h"
 #include "./src/EnergyOsc.hpp"
 #include "./Energy.hpp"
@@ -6,10 +16,21 @@
 
 using namespace daisy;
 using namespace daisysp;
+#ifdef SUBMODULE
+using namespace patch_sm;
+#endif
 
+#ifdef PATCH
 DaisyPatch hw;
 Parameter CTRL_1, CTRL_2, CTRL_3, CTRL_4;
 Parameter * Params[4] = {&CTRL_1, &CTRL_2, &CTRL_3, &CTRL_4};
+ParamIds paramMap[4];// map of param indexes to control indexes
+#endif
+
+#ifdef SUBMODULE
+DaisyPatchSM hw;
+ParamIds paramMap[12];// map of param indexes to control indexes
+#endif
 
 // Constants
 static const int N_POLY = 16;
@@ -27,7 +48,6 @@ int routing;// routing of knob 1.
 int plancks[2];// index is left/right, value is: 0 = not quantized, 1 = semitones, 2 = 5th+octs, 3 = adds -10V offset
 int modtypes[2];// index is left/right, value is: {0 to 3} = {bypass, add, amp}
 int cross;// cross momentum active or not
-ParamIds paramMap[4];// map of param indexes to control indexes
 float oscFreqKnobs[2];
 float oscFreqCV[2];
 float momentumKnob[2];
@@ -73,7 +93,13 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
 		*/
 
 		for (int j = 0; j < 4; j++) {
+
+			#ifdef PATCH
 			ParamUpdate(Params[j]->Process(), paramMap[j]);
+			#endif
+			#ifdef SUBMODULE
+			ParamUpdate(hw.GetAdcValue(j), paramMap[j]);
+			#endif
 		}
 
 		//out[0][i] = process(multiplyVal,vpOVal);
@@ -88,10 +114,12 @@ int main(void)
 {
 	hw.Init();
 
+	#ifdef PATCH
 	CTRL_1.Init(hw.controls[hw.CTRL_1], -10.0f, 10.0f, Parameter::LINEAR);
 	CTRL_2.Init(hw.controls[hw.CTRL_2], -10.0f, 10.0f, Parameter::LINEAR);
 	CTRL_3.Init(hw.controls[hw.CTRL_3], -10.0f, 10.0f, Parameter::LINEAR);
 	CTRL_4.Init(hw.controls[hw.CTRL_4], -10.0f, 10.0f, Parameter::LINEAR);
+	#endif
 	// VpO.Init(0, -3.0f, 7.0f, AudioRateParam::LINEAR);
 	// Multiply.Init(1, -10.0f, 10.0f, AudioRateParam::LINEAR);
 	// Mass.Init(2, -10.0f, 10.0f, AudioRateParam::LINEAR);
@@ -107,11 +135,26 @@ int main(void)
 	momentumCV[1] = 0.0f;
 	vpO = 0.0f;
 	multiply = 3.0f;
-
+	#ifdef PATCH
 	paramMap[0] = VpO;
 	paramMap[1] = Multiply;
 	paramMap[2] = oscFreqCV1;
 	paramMap[3] = oscFreqCV2;
+	#endif
+	#ifdef SUBMODULE
+	paramMap[0] = oscFreqKnob1;
+	paramMap[1] = oscFreqKnob2;
+	paramMap[2] = momentumKnob1;
+	paramMap[3] = momentumKnob2;
+	paramMap[4] = VpO;
+	paramMap[5] = Multiply;
+	paramMap[6] = oscFreqCV1;
+	paramMap[7] = oscFreqCV2;
+	paramMap[8] = momentumCV1;
+	paramMap[9] = momentumCV2;
+	#endif
+
+
 
 	for (int c = 0; c < N_POLY; c++) {
 		oscM[c].construct(48000.0f);
@@ -127,7 +170,9 @@ int main(void)
 
 	while(1) {
 		//hw.DisplayControls(false);
+		#ifdef PATCH
 		UpdateOled();
+		#endif
 	}
 }
 
@@ -179,83 +224,6 @@ void ParamUpdate(float value, int id){
 |    X MOD - M     |
 ********************
 */
-
-
-void UpdateOled()
-{
-    hw.display.Fill(false);
-
-    //std::string str  = "!";
-    //char*       cstr = &str[0];
-
-	const int charWidth = 7;
-	const int charHeight = 10;
-
-
-    hw.display.SetCursor(0, charHeight);
-    hw.display.WriteChar('M', Font_7x10, true);
-	hw.display.SetCursor(65, charHeight);
-	hw.display.WriteChar('C', Font_7x10, true);
-	hw.display.DrawLine(64,0,64,64, true);
-	// Set to scaled CV for M
-	//hw.display.DrawRect
-	// Set to scaled CV for C
-
-	hw.display.SetCursor(0, charHeight * 2 + 1);
-	hw.display.WriteString("M - ", Font_7x10, true);
-	writeModToDisplay(modtypes[0]);
-
-	hw.display.SetCursor(65, charHeight * 2 + 1);
-	hw.display.WriteString("C - ", Font_7x10, true);
-	writeModToDisplay(modtypes[1]);
-
-	hw.display.SetCursor(0, charHeight * 3 + 3);
-	hw.display.WriteString("P - ", Font_7x10, true);
-	
-	writeQuantToDisplay(plancks[0]);
-	hw.display.SetCursor(65,charHeight * 3 + 3);
-	hw.display.WriteString("P - ", Font_7x10, true);
-	writeQuantToDisplay(plancks[1]);
-
-
-
-	
-
-
-    hw.display.Update();
-}
-
-void writeQuantToDisplay(int mode){
-	switch (mode)
-	{
-		case 0: // 
-			hw.display.WriteString("Off", Font_7x10, true);
-			break;
-		case 1: // 
-			hw.display.WriteString("Semi", Font_7x10, true);
-			break;
-		case 2: // 
-			hw.display.WriteString("5_O", Font_7x10, true);
-			break;
-		default:
-			break;
-	}
-}
-
-void writeModToDisplay(int mode){
-	switch (mode)
-	{
-	case 0:
-		hw.display.WriteString("Add", Font_7x10, true);
-		break;
-	case 1:
-		hw.display.WriteString("Amp", Font_7x10, true);
-		break;
-	
-	default:
-		break;
-	}
-}
 
 float process(float Multiply, float VpO) {
 
@@ -447,3 +415,81 @@ void calcFeedbacks(int chan) {
 	feedbacks[0][chan] = clamp(feedbacks[0][chan], 0.0f, 1.0f);
 	feedbacks[1][chan] = clamp(feedbacks[1][chan], 0.0f, 1.0f);
 }
+
+#ifdef PATCH
+void UpdateOled()
+{
+    hw.display.Fill(false);
+
+    //std::string str  = "!";
+    //char*       cstr = &str[0];
+
+	const int charWidth = 7;
+	const int charHeight = 10;
+
+
+    hw.display.SetCursor(0, charHeight);
+    hw.display.WriteChar('M', Font_7x10, true);
+	hw.display.SetCursor(65, charHeight);
+	hw.display.WriteChar('C', Font_7x10, true);
+	hw.display.DrawLine(64,0,64,64, true);
+	// Set to scaled CV for M
+	//hw.display.DrawRect
+	// Set to scaled CV for C
+
+	hw.display.SetCursor(0, charHeight * 2 + 1);
+	hw.display.WriteString("M - ", Font_7x10, true);
+	writeModToDisplay(modtypes[0]);
+
+	hw.display.SetCursor(65, charHeight * 2 + 1);
+	hw.display.WriteString("C - ", Font_7x10, true);
+	writeModToDisplay(modtypes[1]);
+
+	hw.display.SetCursor(0, charHeight * 3 + 3);
+	hw.display.WriteString("P - ", Font_7x10, true);
+	
+	writeQuantToDisplay(plancks[0]);
+	hw.display.SetCursor(65,charHeight * 3 + 3);
+	hw.display.WriteString("P - ", Font_7x10, true);
+	writeQuantToDisplay(plancks[1]);
+
+
+
+	
+
+
+    hw.display.Update();
+}
+
+void writeQuantToDisplay(int mode){
+	switch (mode)
+	{
+		case 0: // 
+			hw.display.WriteString("Off", Font_7x10, true);
+			break;
+		case 1: // 
+			hw.display.WriteString("Semi", Font_7x10, true);
+			break;
+		case 2: // 
+			hw.display.WriteString("5_O", Font_7x10, true);
+			break;
+		default:
+			break;
+	}
+}
+
+void writeModToDisplay(int mode){
+	switch (mode)
+	{
+	case 0:
+		hw.display.WriteString("Add", Font_7x10, true);
+		break;
+	case 1:
+		hw.display.WriteString("Amp", Font_7x10, true);
+		break;
+	
+	default:
+		break;
+	}
+}
+#endif

@@ -42,8 +42,8 @@ enum ParamIds {
 	oscFreqCV2,
 	momentumCV1,
 	momentumCV2,
-	oscFreqKnobs1,
-	oscFreqKnobs2,
+	oscFreqKnob1,
+	oscFreqKnob2,
 	momentumKnob1,
 	momentumKnob2,
 };
