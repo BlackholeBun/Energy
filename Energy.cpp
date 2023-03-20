@@ -141,7 +141,7 @@ int main(void)
 	multiply = 3.0f;
 	#ifdef PATCH
 	paramMap[0] = VpO;
-	paramMap[1] = Multiply;
+	paramMap[1] = momentumKnob1;
 	paramMap[2] = oscFreqKnob1;
 	paramMap[3] = oscFreqKnob2;
 	#endif
