@@ -105,8 +105,10 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
 		//out[0][i] = process(multiplyVal,vpOVal);
 		out[0][i] = process(multiply,vpO);
 		out[1][i] = out[0][i];
+		#ifdef PATCH
 		out[2][i] = out[0][i];
 		out[3][i] = out[0][i];
+		#endif
 	}
 }
 
