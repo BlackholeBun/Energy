@@ -92,15 +92,17 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
 		vpOVal = VpO.Update(in[VpO.Index()][i]);
 		*/
 
+		#ifdef PATCH
 		for (int j = 0; j < 4; j++) {
-
-			#ifdef PATCH
 			ParamUpdate(Params[j]->Process(), paramMap[j]);
-			#endif
-			#ifdef SUBMODULE
-			ParamUpdate(hw.GetAdcValue(j), paramMap[j]);
-			#endif
 		}
+		#endif
+
+		#ifdef SUBMODULE
+		for (int j = 0; j < 10; j++) {
+			ParamUpdate(hw.GetAdcValue(j), paramMap[j]);
+		}
+		#endif
 
 		//out[0][i] = process(multiplyVal,vpOVal);
 		out[0][i] = process(multiply,vpO);
@@ -140,8 +142,8 @@ int main(void)
 	#ifdef PATCH
 	paramMap[0] = VpO;
 	paramMap[1] = Multiply;
-	paramMap[2] = oscFreqCV1;
-	paramMap[3] = oscFreqCV2;
+	paramMap[2] = oscFreqKnob1;
+	paramMap[3] = oscFreqKnob2;
 	#endif
 	#ifdef SUBMODULE
 	paramMap[0] = oscFreqKnob1;
