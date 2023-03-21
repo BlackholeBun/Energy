@@ -71,6 +71,8 @@ float oscFreqCV[2];
 float momentumKnob[2];
 float momentumCV[2];
 float vpO, multiply;
+int unisonVoices = 0;
+float unisonDetune = -0.01f;
 
 // No need to save, with reset
 int numChan = 1;
@@ -102,13 +104,13 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
 	if (!cvChangeMode){
 		menuIndex += temp;
 		if (menuIndex < 0) {
-			menuIndex = 20;
-		} else if (menuIndex > 20) {
+			menuIndex = 21;
+		} else if (menuIndex > 21) {
 			menuIndex = 0;
 		}
 		menuPage = ((menuIndex / 10) * 2) + ((menuIndex % 10) / 6);
 	} else {
-		if (changeParam < 10){
+		if ((changeParam < 10) || (changeParam > 13)){
 			ParamUpdate(temp, changeParam, true);
 		} else {
 			paramMap[changeParam - 10] = static_cast<ParamIds>(static_cast<int>(paramMap[changeParam - 10] + temp));
@@ -275,6 +277,13 @@ void ParamUpdate(float value, int id, bool inc){
 		case 9:
 			momentumKnob[1] = value + (inc ? momentumKnob[1]: 0.0f);
 			break;
+		case 14:
+			unisonVoices = ((int)value + (inc ? unisonVoices: 0)) & 0xf;
+			numChan = std::max(1, unisonVoices);
+			break;
+		case 15:
+			unisonDetune = (value/100.0f) + (inc ? unisonDetune: 0.0f);
+			break;
 		default:
 			break;
 	}
@@ -320,20 +329,16 @@ float process(float Multiply, float VpO) {
 		}
 	}// userInputs refresh
 	*/
-	
-	
+
+	// pitch modulation and feedbacks
+	if (refreshCounter && 0x3) {	
+		calcModSignals(0);// voct modulation, a given channel is updated at sample_rate / 4
+		calcFeedbacks(0);// feedback (momentum), a given channel is updated at sample_rate / 4
+	}
+	float mixratio = 1.0f / (float)numChan;
 	// main signal flow
 	// ----------------		
 	for (int c = 0; c < numChan; c++) {
-		// pitch modulation and feedbacks
-		if ((refreshCounter & 0x3) == (c & 0x3)) {
-			// stagger0 updates channels 0, 4, 8,  12
-			// stagger1 updates channels 1, 5, 9,  13
-			// stagger2 updates channels 2, 6, 10, 14
-			// stagger3 updates channels 3, 7, 11, 15
-			calcModSignals(c);// voct modulation, a given channel is updated at sample_rate / 4
-			calcFeedbacks(c);// feedback (momentum), a given channel is updated at sample_rate / 4
-		}
 		
 		/* Not needed, VCV Rack Req
 		if (!outputs[ENERGY_OUTPUT].isConnected()) {// this is placed here such that feedbacks and mod signals of chan 0 are always calculated, since they are used in lights
@@ -342,14 +347,15 @@ float process(float Multiply, float VpO) {
 		*/
 		
 		// vocts
-		float vocts[2] = {modSignals[0][c] + vpO, modSignals[1][c] + vpO};
+		float cycletune = (float)vpO + ((float)unisonDetune * (float)c);
+		float vocts[2] = {modSignals[0][0] + cycletune, modSignals[1][0] + cycletune};
 		
 		// oscillators
-		float oscMout = oscM[c].step(vocts[0], feedbacks[0][c] * 0.3f);
-		float oscCout = oscC[c].step(vocts[1], feedbacks[1][c] * 0.3f);
+		float oscMout = oscM[c].step(vocts[0], feedbacks[0][0] * 0.3f);
+		float oscCout = oscC[c].step(vocts[1], feedbacks[1][0] * 0.3f);
 		
 		// multiply 
-		float slewInput = (clamp(multiply / 10.0f, 0.0f, 1.0f));
+		float slewInput = (clamp(Multiply / 10.0f, 0.0f, 1.0f));
 
 		float multiplySlewValue = multiplySlewers[c].next(slewInput) * 0.2f;
 		
@@ -359,15 +365,12 @@ float process(float Multiply, float VpO) {
 		
 		//write mi
 		// output
-		outMixer += attv2 * (1.0f / numChan);
+		outMixer += attv2 * mixratio;
 	}
 
 
 	refreshCounter++;
-
-	if (refreshCounter > 15){
-		refreshCounter = 0;
-	}
+	refreshCounter &= 0xf;
 
 	return outMixer;
 
@@ -538,6 +541,14 @@ void DoMenu(){
 			cvChangeMode = !cvChangeMode;
 			changeParam = 13;
 			break;
+		case 20:
+			cvChangeMode = !cvChangeMode;
+			changeParam = 14;
+			break;
+		case 21:
+			cvChangeMode = !cvChangeMode;
+			changeParam = 15;
+			break;
 		default: break;
 	}
 		
@@ -556,6 +567,7 @@ void UpdateOled()
 	case 1: DrawPage2(); break;
 	case 2: DrawPage3(); break;
 	case 3: DrawPage4(); break;
+	case 4: DrawPage5(); break;
 	default: DrawPage1(); break;
 	}
 
@@ -757,6 +769,35 @@ void DrawPage4(){
 	// Line 4
 	hw.display.SetCursor(column1x, fourthLineY);
 	hw.display.WriteString(param4c, Font_7x10, menuIndex == 19);
+
+	hw.display.Update();
+
+}
+void DrawPage5(){
+	//paramMap
+
+	// Page 5 will be for unison settings.
+	// The first item will be unison voices and the second will be unison detune
+
+	hw.display.Fill(false);
+	DrawCursor4(menuIndex - 16, cvChangeMode);
+
+	// Get string values for parameters
+	std::string param1 = "UnVoices - " + std::to_string(unisonVoices);
+	std::string param2 = "UnDetune - " + std::to_string((int)std::round(unisonDetune * 100.0f));
+
+	// generate pointers to the strings
+	char* param1c = &param1[0];
+	char* param2c = &param2[0];
+
+
+	// Line 1
+	hw.display.SetCursor(column1x, firstLineY);
+	hw.display.WriteString(param1c, Font_7x10, menuIndex == 20);
+
+	// Line 2
+	hw.display.SetCursor(column1x, secondLineY);
+	hw.display.WriteString(param2c, Font_7x10, menuIndex == 21);
 
 	hw.display.Update();
 

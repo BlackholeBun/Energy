@@ -49,6 +49,7 @@ void DrawPage1();
 void DrawPage2();
 void DrawPage3();
 void DrawPage4();
+void DrawPage5();
 void DoMenu();
 void DrawCursor8( int, bool);
 void DrawCursor4(int location, bool invert);
