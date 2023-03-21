@@ -12,7 +12,7 @@
 #include "daisysp.h"
 #include "./src/EnergyOsc.hpp"
 #include "./Energy.hpp"
-#include <stdlib.h>
+#include "Energy.hpp"
 
 using namespace daisy;
 using namespace daisysp;
@@ -25,6 +25,22 @@ DaisyPatch hw;
 Parameter CTRL_1, CTRL_2, CTRL_3, CTRL_4;
 Parameter * Params[4] = {&CTRL_1, &CTRL_2, &CTRL_3, &CTRL_4};
 ParamIds paramMap[4];// map of param indexes to control indexes
+int menuIndex = 0;
+int menuPage = 0;
+bool cvChangeMode = false;
+int changeParam = 0;
+const int charWidth = 7;
+const int charHeight = 10;
+const int lineHeight = 16;
+const int screenWidth = 128;
+const int screenHeight = 64;
+const int lineOffset = lineHeight / 2;
+const int firstLineY = lineHeight - lineOffset;
+const int secondLineY = lineHeight * 2 - lineOffset;
+const int thirdLineY = lineHeight * 3 - lineOffset;
+const int fourthLineY = lineHeight * 4 - lineOffset;
+const int column1x = 1;
+const int column2x = 66;
 #endif
 
 #ifdef SUBMODULE
@@ -78,6 +94,33 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
 	static float vpOVal;
 	*/
 	hw.ProcessAllControls();
+
+	#ifdef PATCH
+	int temp = hw.encoder.Increment();
+	if (!cvChangeMode){
+		menuIndex += temp;
+		if (menuIndex < 0) {
+			menuIndex = 20;
+		} else if (menuIndex > 20) {
+			menuIndex = 0;
+		}
+		menuPage = ((menuIndex / 10) * 2) + ((menuIndex % 10) / 6);
+	} else {
+		if (changeParam < 10){
+			ParamUpdate(temp, changeParam, true);
+		} else {
+			paramMap[changeParam - 10] = static_cast<ParamIds>(static_cast<int>(paramMap[changeParam - 10] + temp));
+			if (paramMap[changeParam - 10] < 0) {
+				paramMap[changeParam - 10] = VpO;
+			} else if (paramMap[changeParam - 10] > 9) {
+				paramMap[changeParam - 10] = momentumKnob2;
+			}
+		}
+	}
+		if (hw.encoder.Pressed()){ DoMenu();}
+	#endif
+
+	
 	for (size_t i = 0; i < size; i++)
 	{
 		/*
@@ -94,13 +137,13 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
 
 		#ifdef PATCH
 		for (int j = 0; j < 4; j++) {
-			ParamUpdate(Params[j]->Process(), paramMap[j]);
+			ParamUpdate(Params[j]->Process(), paramMap[j], false);
 		}
 		#endif
 
 		#ifdef SUBMODULE
 		for (int j = 0; j < 10; j++) {
-			ParamUpdate(hw.GetAdcValue(j), paramMap[j]);
+			ParamUpdate(hw.GetAdcValue(j), paramMap[j], false);
 		}
 		#endif
 
@@ -180,54 +223,47 @@ int main(void)
 	}
 }
 
-void ParamUpdate(float value, int id){
+void ParamUpdate(float value, int id, bool inc){
 
-
+	value = clamp(value, -10.0f, 10.0f);
+	
 	switch (id)
 	{
 		case 0:
-			 vpO = value;
+			 vpO = value + (inc ? vpO: 0.0f);
 			break;
 		case 1:
-			multiply = value;
+			multiply = value + (inc ? multiply: 0.0f);
 			break;
 		case 2:
-			oscFreqCV[0] = value;
+			oscFreqCV[0] = value + (inc ? oscFreqCV[0]: 0.0f);
 			break;
 		case 3:
-			oscFreqCV[1] = value;
+			oscFreqCV[1] = value + (inc ? oscFreqCV[1]: 0.0f);
 			break;
 		case 4:
-			momentumCV[0] = value;
+			momentumCV[0] = value + (inc ? momentumCV[0]: 0.0f);
 			break;
 		case 5:
-			momentumCV[1] = value;
+			momentumCV[1] = value + (inc ? momentumCV[1]: 0.0f);
 			break;
 		case 6:
-			oscFreqKnobs[0] = value;
+			oscFreqKnobs[0] = value + (inc ? oscFreqKnobs[0]: 0.0f);
 			break;
 		case 7:	
-			oscFreqKnobs[1] = value;
+			oscFreqKnobs[1] = value + (inc ? oscFreqKnobs[1]: 0.0f);
 			break;
 		case 8:
-			momentumKnob[0] = value;
+			momentumKnob[0] = value + (inc ? momentumKnob[0]: 0.0f);
 			break;
 		case 9:
-			momentumKnob[1] = value;
+			momentumKnob[1] = value + (inc ? momentumKnob[1]: 0.0f);
 			break;
 		default:
 			break;
 	}
 }
-/*  D
-|******************|
-|    M    |    C   |
-| BAR GRAPHS OF CV |
-| M - Add | C - Mul|
-| P - 5_O | P = semi|
-|    X MOD - M     |
-********************
-*/
+
 
 float process(float Multiply, float VpO) {
 
@@ -421,6 +457,75 @@ void calcFeedbacks(int chan) {
 }
 
 #ifdef PATCH
+void DoMenu(){
+	switch (menuIndex)
+	{
+		case 0: modtypes[0] = (modtypes[0] + 1) % 2; break;
+		case 1: plancks[0] = (plancks[0] + 1) % 3; break;
+		case 2: routing = (routing + 1) % 3; break;
+		case 3: modtypes[1] = (modtypes[1] + 1) % 2; break;
+		case 4: plancks[1] = (plancks[1] + 1) % 3; break;
+		case 5: cross = (cross + 1) % 2; break;
+		case 6: 
+			cvChangeMode = !cvChangeMode;
+			changeParam = oscFreqKnob1;
+			break;
+		case 7: 
+			cvChangeMode = !cvChangeMode;
+			changeParam = oscFreqKnob2;
+			break;
+		case 8:
+			cvChangeMode = !cvChangeMode;
+			changeParam = momentumKnob1;
+			break;
+		case 9:
+			cvChangeMode = !cvChangeMode;
+			changeParam = momentumKnob2;
+			break;
+		case 10: 
+			cvChangeMode = !cvChangeMode;
+			changeParam = oscFreqCV1;
+			break;
+		case 11:
+			cvChangeMode = !cvChangeMode;
+			changeParam = oscFreqCV2;
+			break;
+		case 12:
+			cvChangeMode = !cvChangeMode;
+			changeParam = momentumCV1;
+			break;
+		case 13:
+			cvChangeMode = !cvChangeMode;
+			changeParam = momentumCV2;
+			break;
+		case 14:
+			cvChangeMode = !cvChangeMode;
+			changeParam = VpO;
+			break;
+		case 15:
+			cvChangeMode = !cvChangeMode;
+			changeParam = Multiply;
+			break;
+		case 16:
+			cvChangeMode = !cvChangeMode;
+			changeParam = 10;
+			break;
+		case 17:	
+			cvChangeMode = !cvChangeMode;
+			changeParam = 11;
+			break;
+		case 18:
+			cvChangeMode = !cvChangeMode;
+			changeParam = 12;
+			break;
+		case 19:
+			cvChangeMode = !cvChangeMode;
+			changeParam = 13;
+			break;
+		default: break;
+	}
+		
+}
 void UpdateOled()
 {
     hw.display.Fill(false);
@@ -428,42 +533,251 @@ void UpdateOled()
     //std::string str  = "!";
     //char*       cstr = &str[0];
 
-	const int charWidth = 7;
-	const int charHeight = 10;
 
-
-    hw.display.SetCursor(0, charHeight);
-    hw.display.WriteChar('M', Font_7x10, true);
-	hw.display.SetCursor(65, charHeight);
-	hw.display.WriteChar('C', Font_7x10, true);
-	hw.display.DrawLine(64,0,64,64, true);
-	// Set to scaled CV for M
-	//hw.display.DrawRect
-	// Set to scaled CV for C
-
-	hw.display.SetCursor(0, charHeight * 2 + 1);
-	hw.display.WriteString("M - ", Font_7x10, true);
-	writeModToDisplay(modtypes[0]);
-
-	hw.display.SetCursor(65, charHeight * 2 + 1);
-	hw.display.WriteString("C - ", Font_7x10, true);
-	writeModToDisplay(modtypes[1]);
-
-	hw.display.SetCursor(0, charHeight * 3 + 3);
-	hw.display.WriteString("P - ", Font_7x10, true);
-	
-	writeQuantToDisplay(plancks[0]);
-	hw.display.SetCursor(65,charHeight * 3 + 3);
-	hw.display.WriteString("P - ", Font_7x10, true);
-	writeQuantToDisplay(plancks[1]);
-
-
-
-	
-
+	switch (menuPage)
+	{
+	case 0: DrawPage1(); break;
+	case 1: DrawPage2(); break;
+	case 2: DrawPage3(); break;
+	case 3: DrawPage4(); break;
+	default: DrawPage1(); break;
+	}
 
     hw.display.Update();
 }
+
+/*  D
+|*******************|
+| M - 100 | C - 100 |
+| M - Add | C - Mul |
+| P - 5_O | P = semi|
+| R - M   | X - M   |
+********************
+*/
+void DrawPage1(){
+
+	// The first line will display the M and C knob values
+	// The second line will display the M and C mod types
+	// The third line will display the P and P planck values
+	// The fourth line will display the routing and cross values
+
+	// The values on lines 2-4 will be selectable
+	hw.display.Fill(false);
+
+
+	hw.display.DrawLine((screenWidth/2),0,(screenWidth/2),screenHeight, true);
+	hw.display.DrawLine(0,(lineHeight*3),screenWidth,(lineHeight*3), true);
+	//draw box around selected item
+	DrawCursor8(menuIndex + 2, false);
+
+	// Get string values for knob positions
+	std::string freq1 = "M - " + std::to_string((int)std::round(oscFreqKnobs[0] * 100.0f));
+	std::string freq2 = "c - " + std::to_string((int)std::round(oscFreqKnobs[1] * 100.0f));
+	// generate pointers to the strings
+	char* freq1c = &freq1[0];
+	char* freq2c = &freq2[0];
+
+
+	// Line 1
+	hw.display.SetCursor(column1x, firstLineY);
+	hw.display.WriteString(freq1c, Font_7x10, true);
+	hw.display.SetCursor(column2x, firstLineY);
+	hw.display.WriteString(freq2c, Font_7x10, true);
+
+	// Line 2
+	hw.display.SetCursor(column1x, secondLineY);
+	hw.display.WriteString("M - ", Font_7x10, true);
+	writeModToDisplay(modtypes[0]);
+
+	hw.display.SetCursor(column2x, secondLineY);
+	hw.display.WriteString("C - ", Font_7x10, true);
+	writeModToDisplay(modtypes[1]);
+
+	// Line 3
+	hw.display.SetCursor(column1x, thirdLineY);
+	hw.display.WriteString("P - ", Font_7x10, true);
+	writeQuantToDisplay(plancks[0]);
+
+	hw.display.SetCursor(column2x, thirdLineY);
+	hw.display.WriteString("P - ", Font_7x10, true);
+	writeQuantToDisplay(plancks[1]);
+
+	// Line 4
+	hw.display.SetCursor(column1x, fourthLineY);
+	hw.display.WriteString("R - ", Font_7x10, true);
+	writeRoutingToDisplay(routing);
+
+	hw.display.SetCursor(column2x, fourthLineY);
+	hw.display.WriteString("X - ", Font_7x10, true);
+	writeCrossToDisplay(cross);
+	
+	hw.display.Update();
+}
+
+void DrawPage2(){
+	// Page 2 will display the numerical values of the knobs
+	// There will be 1 knob per line
+	// The selected knob will be highlighted
+	// The selected knob will be able to be changed
+
+	hw.display.Fill(false);
+	DrawCursor4(menuIndex - 6, cvChangeMode);
+
+	// Get string values for knob positions
+	std::string freq1 = "M_Osc - " + std::to_string((int)std::round(oscFreqKnobs[0] * 100.0f));
+	std::string freq2 = "C_Osc - " + std::to_string((int)std::round(oscFreqKnobs[1] * 100.0f));
+	std::string freq3 = "M_Momentum - " + std::to_string((int)std::round(momentumKnob[0] * 100.0f));
+	std::string freq4 = "C_Momentum - " + std::to_string((int)std::round(momentumKnob[1] * 100.0f));
+	// generate pointers to the strings
+	char* freq1c = &freq1[0];
+	char* freq2c = &freq2[0];
+	char* freq3c = &freq3[0];
+	char* freq4c = &freq4[0];
+
+
+	// Line 1
+	hw.display.SetCursor(column1x, firstLineY);
+	hw.display.WriteString(freq1c, Font_7x10, menuIndex == 6);
+
+	// Line 2
+	hw.display.SetCursor(column1x, secondLineY);
+	hw.display.WriteString(freq2c, Font_7x10, menuIndex == 7);
+
+	// Line 3
+	hw.display.SetCursor(column1x, thirdLineY);
+	hw.display.WriteString(freq3c, Font_7x10, menuIndex == 8);
+
+	// Line 4
+	hw.display.SetCursor(column1x, fourthLineY);
+	hw.display.WriteString(freq4c, Font_7x10, menuIndex == 9);
+
+	hw.display.Update();
+}
+
+void DrawPage3(){
+	// Page 3 will display the numerical values of the CVs
+	// There will be 2 CVs per line
+	// The selected CV will be highlighted
+	// The selected CV will be able to be changed
+	// There are a total of 6 CVs
+
+	hw.display.Fill(false);
+	DrawCursor8(menuIndex - 10, cvChangeMode);
+
+	// Get string values for CVs
+	std::string cv1 = "O_M - " + std::to_string((int)std::round(oscFreqCV[0] * 100.0f));
+	std::string cv2 = "O_C - " + std::to_string((int)std::round(oscFreqCV[1] * 100.0f));
+	std::string cv3 = "M_M - " + std::to_string((int)std::round(momentumCV[0] * 100.0f));
+	std::string cv4 = "M_C - " + std::to_string((int)std::round(momentumCV[1] * 100.0f));
+	std::string cv5 = "VpO - " + std::to_string((int)std::round(vpO * 100.0f));
+	std::string cv6 = "Mul - " + std::to_string((int)std::round(multiply * 100.0f));
+
+	// generate pointers to the strings
+	char* cv1c = &cv1[0];
+	char* cv2c = &cv2[0];
+	char* cv3c = &cv3[0];
+	char* cv4c = &cv4[0];
+	char* cv5c = &cv5[0];
+	char* cv6c = &cv6[0];
+
+	// Line 1
+	hw.display.SetCursor(column1x, firstLineY);
+	hw.display.WriteString(cv1c, Font_7x10, menuIndex == 10);
+	hw.display.SetCursor(column2x, firstLineY);
+	hw.display.WriteString(cv4c, Font_7x10, menuIndex == 11);
+
+	// Line 2
+	hw.display.SetCursor(column1x, secondLineY);
+	hw.display.WriteString(cv2c, Font_7x10, menuIndex == 12);
+	hw.display.SetCursor(column2x, secondLineY);
+	hw.display.WriteString(cv5c, Font_7x10, menuIndex == 13);
+
+	// Line 3
+	hw.display.SetCursor(column1x, thirdLineY);
+	hw.display.WriteString(cv3c, Font_7x10, menuIndex == 14);
+	hw.display.SetCursor(column2x, thirdLineY);
+	hw.display.WriteString(cv6c, Font_7x10, menuIndex == 15);
+
+	hw.display.Update();
+
+}
+
+void DrawPage4(){
+	//paramMap
+
+	// Page 4 will show the mapping of the knobs to parameters
+	// there will be 1 parameter per line
+	// the selected parameter will be highlighted
+	// the selected parameter will be able to be changed
+
+	hw.display.Fill(false);
+	DrawCursor4(menuIndex - 16, cvChangeMode);
+
+	// Get string values for parameters
+	std::string param1 = "CTRL_1 - " + paramEnumToString( paramMap[0]);
+	std::string param2 = "CTRL_2 - " + paramEnumToString( paramMap[1]);
+	std::string param3 = "CTRL_3 - " + paramEnumToString( paramMap[2]);
+	std::string param4 = "CTRL_4 - " + paramEnumToString( paramMap[3]);
+
+	// generate pointers to the strings
+	char* param1c = &param1[0];
+	char* param2c = &param2[0];
+	char* param3c = &param3[0];
+	char* param4c = &param4[0];
+
+
+	// Line 1
+	hw.display.SetCursor(column1x, firstLineY);
+	hw.display.WriteString(param1c, Font_7x10, menuIndex == 16);
+
+	// Line 2
+	hw.display.SetCursor(column1x, secondLineY);
+	hw.display.WriteString(param2c, Font_7x10, menuIndex == 17);
+
+	// Line 3
+	hw.display.SetCursor(column1x, thirdLineY);
+	hw.display.WriteString(param3c, Font_7x10, menuIndex == 18);
+
+	// Line 4
+	hw.display.SetCursor(column1x, fourthLineY);
+	hw.display.WriteString(param4c, Font_7x10, menuIndex == 19);
+
+	hw.display.Update();
+
+}
+void DrawCursor8(int location, bool invert){
+    // location is index of menu item
+    // there are 4 rows per page
+    // 2 menu items per row
+    // 0-3 are column 1
+    // 4-7 are column 2
+    
+    int row = location / 2; // calculate row based on location
+    int col = location % 2; // calculate column based on location
+    
+    int x1 = col * (screenWidth / 2); // calculate x coordinate of left edge of rectangle
+    int x2 = x1 + (screenWidth / 2) - 1; // calculate x coordinate of right edge of rectangle
+    int y1 = row * lineHeight + 1; // calculate y coordinate of top edge of rectangle
+    int y2 = y1 + lineHeight - 1; // calculate y coordinate of bottom edge of rectangle
+    
+    hw.display.DrawRect(x1, y1, x2, y2, invert); // draw rectangle
+}
+
+void DrawCursor4(int location, bool invert){
+    // location is index of menu item
+    // there are 4 rows per page
+    // 1 menu items per row
+	
+	int row = location; // calculate row based on location
+
+	int x1 = 0; // calculate x coordinate of left edge of rectangle
+	int x2 = screenWidth; // calculate x coordinate of right edge of rectangle
+	int y1 = row * lineHeight + 1; // calculate y coordinate of top edge of rectangle
+	int y2 = y1 + lineHeight - 1; // calculate y coordinate of bottom edge of rectangle
+
+    hw.display.DrawRect(x1, y1, x2, y2, invert); // draw rectangle
+}
+
 
 void writeQuantToDisplay(int mode){
 	switch (mode)
@@ -496,4 +810,60 @@ void writeModToDisplay(int mode){
 		break;
 	}
 }
+
+void writeRoutingToDisplay(int routing){
+	switch (routing)
+	{
+	case 0:
+		hw.display.WriteString("I", Font_7x10, true);
+		break;
+	case 1:
+		hw.display.WriteString("C", Font_7x10, true);
+		break;
+	case 2:
+		hw.display.WriteString("S", Font_7x10, true);
+		break;
+	}
+}
+
+void writeCrossToDisplay(int cross){
+	switch (cross)
+	{
+	case 0:
+		hw.display.WriteString("M", Font_7x10, true);
+		break;
+	case 1:
+		hw.display.WriteString("C", Font_7x10, true);
+		break;
+	}
+}
+
+// Returns an array pointer to a string with the name of the selected parameter
+std::string paramEnumToString(ParamIds e) {
+    switch (e) {
+        case VpO:
+            return "VpO";
+        case Multiply:
+            return "Multiply";
+        case oscFreqCV1:
+            return "oscFreqCV1";
+        case oscFreqCV2:
+            return "oscFreqCV2";
+        case momentumCV1:
+            return "momentumCV1";
+        case momentumCV2:
+            return "momentumCV2";
+        case oscFreqKnob1:
+            return "oscFreqKnob1";
+        case oscFreqKnob2:
+            return "oscFreqKnob2";
+        case momentumKnob1:
+            return "momentumKnob1";
+        case momentumKnob2:
+            return "momentumKnob2";
+        default:
+            return "";
+    }
+}
+
 #endif

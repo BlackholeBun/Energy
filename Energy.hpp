@@ -1,4 +1,6 @@
 #pragma once
+#include <stdlib.h>
+#include <string>
 
 struct SchmittTrigger {
 	// implements a 0.1V - 1.0V SchmittTrigger (include/dsp/digital.hpp) instead of 
@@ -22,19 +24,6 @@ struct SchmittTrigger {
 	}	
 };
 
-float process(float, float);
-void UpdateOled();
-void writeQuantToDisplay(int mode);
-void writeModToDisplay(int mode);
-float calcFreqKnob(int osci);
-void calcModSignals(int chan);
-void calcFeedbacks(int chan);
-void ParamUpdate(float value, int id);
-
-inline float clamp(float x, float min, float max) {
-	return x < min ? min : (x > max ? max : x);
-};
-
 enum ParamIds {
 	VpO,
 	Multiply,
@@ -46,6 +35,31 @@ enum ParamIds {
 	oscFreqKnob2,
 	momentumKnob1,
 	momentumKnob2,
+};
+
+float process(float, float);
+void UpdateOled();
+void writeQuantToDisplay(int mode);
+void writeModToDisplay(int mode);
+float calcFreqKnob(int osci);
+void calcModSignals(int chan);
+void calcFeedbacks(int chan);
+void ParamUpdate(float value, int id, bool inc);
+void DrawPage1();
+void DrawPage2();
+void DrawPage3();
+void DrawPage4();
+void DoMenu();
+void DrawCursor8( int, bool);
+void DrawCursor4(int location, bool invert);
+void writeQuantToDisplay(int mode);
+void writeModToDisplay(int mode);
+void writeRoutingToDisplay(int routing);
+void writeCrossToDisplay(int cross);
+std::string paramEnumToString(ParamIds e);
+
+inline float clamp(float x, float min, float max) {
+	return x < min ? min : (x > max ? max : x);
 };
 
 /*
