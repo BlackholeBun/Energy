@@ -3,6 +3,7 @@
 
 #ifdef PATCH
 #include "daisy_patch.h"
+#include "util/CpuLoadMeter.h"
 #endif
 
 #ifdef SUBMODULE
@@ -43,6 +44,7 @@ const int column1x = 1;
 const int column2x = 66;
 int encoderDebounce = 0;
 bool encoderLast = false;
+CpuLoadMeter cpuMeter;
 #endif
 
 #ifdef SUBMODULE
@@ -72,7 +74,7 @@ float momentumKnob[2];
 float momentumCV[2];
 float vpO, multiply;
 int unisonVoices = 0;
-float unisonDetune = -0.01f;
+float unisonDetune = -0.001f;
 
 // No need to save, with reset
 int numChan = 1;
@@ -97,9 +99,15 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
 	static float multiplyVal;
 	static float vpOVal;
 	*/
+	cpuMeter.OnBlockStart();
 	hw.ProcessAllControls();
-
+	
 	#ifdef PATCH
+	if (cpuMeter.GetAvgCpuLoad() > 0.9f){
+		numChan--;
+		unisonVoices--;
+		cpuMeter.Reset();
+	}
 	int temp = hw.encoder.Increment();
 	if (!cvChangeMode){
 		menuIndex += temp;
@@ -173,11 +181,13 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
 		out[3][i] = out[0][i];
 		#endif
 	}
+	cpuMeter.OnBlockEnd();
 }
 
 int main(void)
 {
 	hw.Init();
+	cpuMeter.Init(hw.AudioSampleRate(), 1);
 
 	#ifdef PATCH
 	CTRL_1.Init(hw.controls[hw.CTRL_1], -10.0f, 10.0f, Parameter::LINEAR);
@@ -282,7 +292,7 @@ void ParamUpdate(float value, int id, bool inc){
 			numChan = std::max(1, unisonVoices);
 			break;
 		case 15:
-			unisonDetune = (value/100.0f) + (inc ? unisonDetune: 0.0f);
+			unisonDetune = (value/1000.0f) + (inc ? unisonDetune: 0.0f);
 			break;
 		default:
 			break;
@@ -331,15 +341,16 @@ float process(float Multiply, float VpO) {
 	*/
 
 	// pitch modulation and feedbacks
-	if (refreshCounter && 0x3) {	
-		calcModSignals(0);// voct modulation, a given channel is updated at sample_rate / 4
-		calcFeedbacks(0);// feedback (momentum), a given channel is updated at sample_rate / 4
-	}
 	float mixratio = 1.0f / (float)numChan;
 	// main signal flow
 	// ----------------		
+
 	for (int c = 0; c < numChan; c++) {
 		
+		if (refreshCounter && 0x3) {	
+			calcModSignals(c);// voct modulation, a given channel is updated at sample_rate / 4
+			calcFeedbacks(c);// feedback (momentum), a given channel is updated at sample_rate / 4
+		}
 		/* Not needed, VCV Rack Req
 		if (!outputs[ENERGY_OUTPUT].isConnected()) {// this is placed here such that feedbacks and mod signals of chan 0 are always calculated, since they are used in lights
 			break;
@@ -347,12 +358,12 @@ float process(float Multiply, float VpO) {
 		*/
 		
 		// vocts
-		float cycletune = (float)vpO + ((float)unisonDetune * (float)c);
-		float vocts[2] = {modSignals[0][0] + cycletune, modSignals[1][0] + cycletune};
+		float cycletune = (float)vpO + ((float)unisonDetune * (float)c * (c % 2 ? -1.0f : 1.0f));
+		float vocts[2] = {modSignals[0][c] + cycletune, modSignals[1][c] + cycletune};
 		
 		// oscillators
-		float oscMout = oscM[c].step(vocts[0], feedbacks[0][0] * 0.3f);
-		float oscCout = oscC[c].step(vocts[1], feedbacks[1][0] * 0.3f);
+		float oscMout = oscM[c].step(vocts[0], feedbacks[0][c] * 0.3f);
+		float oscCout = oscC[c].step(vocts[1], feedbacks[1][c] * 0.3f);
 		
 		// multiply 
 		float slewInput = (clamp(Multiply / 10.0f, 0.0f, 1.0f));
@@ -784,11 +795,13 @@ void DrawPage5(){
 
 	// Get string values for parameters
 	std::string param1 = "UnVoices - " + std::to_string(unisonVoices);
-	std::string param2 = "UnDetune - " + std::to_string((int)std::round(unisonDetune * 100.0f));
+	std::string param2 = "UnDetune - " + std::to_string((int)std::round(unisonDetune * 1000.0f));
+	std::string param3 = "CPULoad - " + std::to_string((int)std::round(cpuMeter.GetAvgCpuLoad() * 100.0f));
 
 	// generate pointers to the strings
 	char* param1c = &param1[0];
 	char* param2c = &param2[0];
+	char* param3c = &param3[0];
 
 
 	// Line 1
@@ -798,6 +811,10 @@ void DrawPage5(){
 	// Line 2
 	hw.display.SetCursor(column1x, secondLineY);
 	hw.display.WriteString(param2c, Font_7x10, menuIndex == 21);
+
+	// Line 3
+	hw.display.SetCursor(column1x, thirdLineY);
+	hw.display.WriteString(param3c, Font_7x10, true );
 
 	hw.display.Update();
 
