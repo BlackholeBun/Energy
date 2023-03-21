@@ -34,13 +34,15 @@ const int charHeight = 10;
 const int lineHeight = 16;
 const int screenWidth = 128;
 const int screenHeight = 64;
-const int lineOffset = lineHeight / 2;
-const int firstLineY = lineHeight - lineOffset;
-const int secondLineY = lineHeight * 2 - lineOffset;
-const int thirdLineY = lineHeight * 3 - lineOffset;
-const int fourthLineY = lineHeight * 4 - lineOffset;
+const int lineOffset = (lineHeight - charHeight) / 2;
+const int firstLineY = 0 + lineOffset;//lineHeight;
+const int secondLineY = lineHeight * 1 + lineOffset;
+const int thirdLineY = lineHeight * 2 + lineOffset;
+const int fourthLineY = lineHeight * 3 + lineOffset;
 const int column1x = 1;
 const int column2x = 66;
+int encoderDebounce = 0;
+bool encoderLast = false;
 #endif
 
 #ifdef SUBMODULE
@@ -117,7 +119,21 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
 			}
 		}
 	}
-		if (hw.encoder.Pressed()){ DoMenu();}
+	if (hw.encoder.Pressed()){
+		if (!encoderLast){
+			DoMenu();
+			encoderLast = true;
+			encoderDebounce = 1000;
+		} else {
+			encoderDebounce = 1000;
+		}
+	}
+	if (encoderLast){
+		encoderDebounce--;
+		if (encoderDebounce <= 0){
+			encoderLast = false;
+		}
+	}
 	#endif
 
 	
@@ -566,7 +582,7 @@ void DrawPage1(){
 
 
 	hw.display.DrawLine((screenWidth/2),0,(screenWidth/2),screenHeight, true);
-	hw.display.DrawLine(0,(lineHeight*3),screenWidth,(lineHeight*3), true);
+	hw.display.DrawLine(0,(lineHeight*4),screenWidth,(lineHeight*4), true);
 	//draw box around selected item
 	DrawCursor8(menuIndex + 2, false);
 
@@ -586,29 +602,29 @@ void DrawPage1(){
 
 	// Line 2
 	hw.display.SetCursor(column1x, secondLineY);
-	hw.display.WriteString("M - ", Font_7x10, true);
+	hw.display.WriteString("M - ", Font_7x10, menuIndex == 0);
 	writeModToDisplay(modtypes[0]);
 
 	hw.display.SetCursor(column2x, secondLineY);
-	hw.display.WriteString("C - ", Font_7x10, true);
+	hw.display.WriteString("C - ", Font_7x10, menuIndex == 3);
 	writeModToDisplay(modtypes[1]);
 
 	// Line 3
 	hw.display.SetCursor(column1x, thirdLineY);
-	hw.display.WriteString("P - ", Font_7x10, true);
+	hw.display.WriteString("P - ", Font_7x10, menuIndex == 1);
 	writeQuantToDisplay(plancks[0]);
 
 	hw.display.SetCursor(column2x, thirdLineY);
-	hw.display.WriteString("P - ", Font_7x10, true);
+	hw.display.WriteString("P - ", Font_7x10, menuIndex == 4);
 	writeQuantToDisplay(plancks[1]);
 
 	// Line 4
 	hw.display.SetCursor(column1x, fourthLineY);
-	hw.display.WriteString("R - ", Font_7x10, true);
+	hw.display.WriteString("R - ", Font_7x10, menuIndex == 2);
 	writeRoutingToDisplay(routing);
 
 	hw.display.SetCursor(column2x, fourthLineY);
-	hw.display.WriteString("X - ", Font_7x10, true);
+	hw.display.WriteString("X - ", Font_7x10, menuIndex == 5);
 	writeCrossToDisplay(cross);
 	
 	hw.display.Update();
@@ -684,17 +700,17 @@ void DrawPage3(){
 	hw.display.SetCursor(column1x, firstLineY);
 	hw.display.WriteString(cv1c, Font_7x10, menuIndex == 10);
 	hw.display.SetCursor(column2x, firstLineY);
-	hw.display.WriteString(cv4c, Font_7x10, menuIndex == 11);
+	hw.display.WriteString(cv4c, Font_7x10, menuIndex == 13);
 
 	// Line 2
 	hw.display.SetCursor(column1x, secondLineY);
-	hw.display.WriteString(cv2c, Font_7x10, menuIndex == 12);
+	hw.display.WriteString(cv2c, Font_7x10, menuIndex == 11);
 	hw.display.SetCursor(column2x, secondLineY);
-	hw.display.WriteString(cv5c, Font_7x10, menuIndex == 13);
+	hw.display.WriteString(cv5c, Font_7x10, menuIndex == 14);
 
 	// Line 3
 	hw.display.SetCursor(column1x, thirdLineY);
-	hw.display.WriteString(cv3c, Font_7x10, menuIndex == 14);
+	hw.display.WriteString(cv3c, Font_7x10, menuIndex == 12);
 	hw.display.SetCursor(column2x, thirdLineY);
 	hw.display.WriteString(cv6c, Font_7x10, menuIndex == 15);
 
@@ -752,8 +768,8 @@ void DrawCursor8(int location, bool invert){
     // 0-3 are column 1
     // 4-7 are column 2
     
-    int row = location / 2; // calculate row based on location
-    int col = location % 2; // calculate column based on location
+    int row = location % 3; // calculate row based on location
+    int col = location / 3; // calculate column based on location
     
     int x1 = col * (screenWidth / 2); // calculate x coordinate of left edge of rectangle
     int x2 = x1 + (screenWidth / 2) - 1; // calculate x coordinate of right edge of rectangle
@@ -846,21 +862,21 @@ std::string paramEnumToString(ParamIds e) {
         case Multiply:
             return "Multiply";
         case oscFreqCV1:
-            return "oscFreqCV1";
+            return "oscFCV1";
         case oscFreqCV2:
-            return "oscFreqCV2";
+            return "oscFCV2";
         case momentumCV1:
-            return "momentumCV1";
+            return "momCV1";
         case momentumCV2:
-            return "momentumCV2";
+            return "momCV2";
         case oscFreqKnob1:
-            return "oscFreqKnob1";
+            return "oscFK1";
         case oscFreqKnob2:
-            return "oscFreqKnob2";
+            return "oscFK2";
         case momentumKnob1:
-            return "momentumKnob1";
+            return "momK1";
         case momentumKnob2:
-            return "momentumKnob2";
+            return "momK2";
         default:
             return "";
     }
