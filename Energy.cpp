@@ -190,7 +190,7 @@ int main(void)
 	cpuMeter.Init(hw.AudioSampleRate(), 1);
 
 	#ifdef PATCH
-	CTRL_1.Init(hw.controls[hw.CTRL_1], -2.0f, 3.0f, Parameter::LINEAR);
+	CTRL_1.Init(hw.controls[hw.CTRL_1], 0.0f, 10.0f, Parameter::LINEAR);
 	CTRL_2.Init(hw.controls[hw.CTRL_2], -10.0f, 10.0f, Parameter::LINEAR);
 	CTRL_3.Init(hw.controls[hw.CTRL_3], -10.0f, 10.0f, Parameter::LINEAR);
 	CTRL_4.Init(hw.controls[hw.CTRL_4], -10.0f, 10.0f, Parameter::LINEAR);
@@ -258,7 +258,7 @@ void ParamUpdate(float value, int id, bool inc){
 	switch (id)
 	{
 		case 0:
-			 vpO = value + (inc ? vpO: 0.0f);
+			 vpO = ((value/2) - 3) + (inc ? vpO: 0.0f);
 			break;
 		case 1:
 			multiply = value + (inc ? multiply: 0.0f);
