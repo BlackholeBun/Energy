@@ -169,7 +169,7 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
 
 		#ifdef SUBMODULE
 		for (int j = 0; j < 10; j++) {
-			ParamUpdate(hw.GetAdcValue(j), paramMap[j], false);
+			ParamUpdate(hw.GetAdcFloat(j), paramMap[j], false);
 		}
 		#endif
 
@@ -258,7 +258,12 @@ void ParamUpdate(float value, int id, bool inc){
 	switch (id)
 	{
 		case 0:
+			#ifdef PATCH
 			 vpO = ((value/2) - 3) + (inc ? vpO: 0.0f);
+			#endif
+			#ifdef SUBMODULE
+			 vpO = ((value *10) - 5) + (inc ? vpO: 0.0f);
+			#endif
 			break;
 		case 1:
 			multiply = value + (inc ? multiply: 0.0f);
