@@ -190,7 +190,7 @@ int main(void)
 	cpuMeter.Init(hw.AudioSampleRate(), 1);
 
 	#ifdef PATCH
-	CTRL_1.Init(hw.controls[hw.CTRL_1], -10.0f, 10.0f, Parameter::LINEAR);
+	CTRL_1.Init(hw.controls[hw.CTRL_1], -2.0f, 3.0f, Parameter::LINEAR);
 	CTRL_2.Init(hw.controls[hw.CTRL_2], -10.0f, 10.0f, Parameter::LINEAR);
 	CTRL_3.Init(hw.controls[hw.CTRL_3], -10.0f, 10.0f, Parameter::LINEAR);
 	CTRL_4.Init(hw.controls[hw.CTRL_4], -10.0f, 10.0f, Parameter::LINEAR);
